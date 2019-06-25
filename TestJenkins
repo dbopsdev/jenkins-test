@@ -1,0 +1,40 @@
+node {
+  def stageName
+    
+  try {
+      stage ('Check Google health') {
+        stageName = "Google is down!"
+        sh "curl -m 10 http://www.google.com"
+      }
+      stage ('Check YOUR-SITE health') {
+        stageName = 'YOUR-SITE is down!'
+        sh "curl -m 10 http://SITE-DOMAIN"
+      }
+  } catch (e) {
+    currentBuild.result = 'FAILURE'
+    notifySlack(currentBuild.result, stageName)
+  }
+}
+
+def notifySlack(String buildStatus = 'STARTED', String stageName = '') {
+    buildStatus = buildStatus ?: 'SUCCESS'
+
+    def color
+
+    if (buildStatus == 'STARTED') {
+        color = '#D4DADF'
+    } else if (buildStatus == 'SUCCESS') {
+        color = '#36a64f'
+    } else if (buildStatus == 'UNSTABLE') {
+        color = '#daa038'
+    } else {
+        color = '#d00000'
+    }
+
+    def msg = "${buildStatus} - ${env.JOB_NAME} - #${env.BUILD_NUMBER} - *${stageName}* <${env.BUILD_URL}|(Open)>"
+    def token = "slack-token"
+    def baseUrl = "https://YOUR_TEAM_SUBDOMAIN.slack.com/services/hooks/jenkins-ci/"
+    def channel = "#channel"
+
+    slackSend(baseUrl: baseUrl, color: color, message: msg, token: token, channel: channel)
+}
